@@ -1,0 +1,85 @@
+name: Server Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-cmake:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, windows-2019]
+        include:
+        - name: "Ubuntu-Latest x86_64"
+          os: ubuntu-latest
+          cmake-args: -G "Unix Makefiles"
+          build-args: --parallel
+          package-file: DDNet-PVP-Ubuntu-x86_64.zip
+          env:
+            CFLAGS: -Wdeclaration-after-statement -Wduplicated-branches -Werror
+            CXXFLAGS: -Wduplicated-branches -Werror
+            
+        - name: "Windows x64"
+          os: windows-latest
+          cmake-args: -G "Visual Studio 16 2019" -A x64
+          package-file: DDNet-PVP-win64.zip
+          env:
+            CFLAGS: /WX
+            CXXFLAGS: /WX
+            LDFLAGS: /WX
+
+        - name: "Windows x86"
+          os: windows-2019
+          cmake-args: -G "Visual Studio 16 2019" -A Win32
+          package-file: DDNet-PVP-win32.zip
+          env:
+            CFLAGS: /WX
+            CXXFLAGS: /WX
+            LDFLAGS: /WX
+
+    steps:
+    - name: Checkout submodules
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Prepare Linux
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        sudo apt-get update -y
+        sudo apt install build-essential cmake git libcurl4-openssl-dev libssl-dev libfreetype6-dev libglew-dev libnotify-dev libogg-dev libopus-dev libopusfile-dev libpnglite-dev libsdl2-dev libsqlite3-dev libwavpack-dev python google-mock -y
+        sudo apt-get install libboost-dev libmariadbclient-dev libmysqlcppconn-dev libopus-dev libopusfile-dev -y
+    - name: Build
+      env: ${{ matrix.env }}
+      run: |
+        mkdir release
+        cd release
+        ${{ matrix.cmake-path }}cmake ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -Werror=dev -DDOWNLOAD_GTEST=ON -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=. ..
+        ${{ matrix.cmake-path }}cmake --build . --config Release ${{ matrix.build-args }} --target package_zip
+        ${{ matrix.cmake-path }}cmake --build . --config Release ${{ matrix.build-args }} --target mmoteeworlds_srv
+    - name: Package(Linux)
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        cd release
+        mv ${{ matrix.package-file }} DDNet-Server ..
+        cd ..
+        7z a ${{ matrix.package-file }} DDNet-Server autoexec.cfg room_config data
+        mkdir release/artifacts
+        mv ${{ matrix.package-file }} release/artifacts
+    - name: Package(Windows)
+      if: contains(matrix.os, 'windows')
+      run: |
+        mv release/${{ matrix.package-file }} .
+        mv release/mmoteeworlds_srv.exe .
+        7z a ${{ matrix.package-file }} DDNet-Server.exe autoexec.cfg room_config data
+        mkdir release/artifacts
+        mv ${{ matrix.package-file }} release/artifacts
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: ${{ matrix.name }}
+        path: release/artifacts/${{ matrix.package-file }}
