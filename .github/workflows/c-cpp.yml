@@ -58,8 +58,7 @@ jobs:
       run: |
         mkdir release
         cd release
-        ${{ matrix.cmake-path }}cmake ${{ matrix.cmake-args }} -DCMAKE_BUILD_TYPE=Release -Werror=dev -DDOWNLOAD_GTEST=OFF -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=. ..
-        ${{ matrix.cmake-path }}cmake --build . --config Release ${{ matrix.build-args }} --target package_zip
+        ${{ matrix.cmake-path }}cmake ${{ matrix.cmake-args }} ..
         ${{ matrix.cmake-path }}cmake --build . --config Release ${{ matrix.build-args }} --target DDNet-Server
     - name: Package(Linux)
       if: contains(matrix.os, 'ubuntu')
@@ -74,7 +73,7 @@ jobs:
       if: contains(matrix.os, 'windows')
       run: |
         mv release/${{ matrix.package-file }} .
-        mv release/mmoteeworlds_srv.exe .
+        mv release/DDNet-Server.exe .
         7z a ${{ matrix.package-file }} DDNet-Server.exe autoexec.cfg room_config data
         mkdir release/artifacts
         mv ${{ matrix.package-file }} release/artifacts
