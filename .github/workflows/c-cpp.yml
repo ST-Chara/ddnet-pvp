@@ -60,7 +60,7 @@ jobs:
         cd release
         ${{ matrix.cmake-path }}cmake ${{ matrix.cmake-args }} ..
         ${{ matrix.cmake-path }}cmake .
-        make DDNet-Server
+        make
     - name: Package(Linux)
       if: contains(matrix.os, 'ubuntu')
       run: |
